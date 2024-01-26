@@ -7,7 +7,7 @@
     <!-- Include Leaflet CSS and JavaScript -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.1.0/dist/MarkerCluster.Default.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.1.0/dis/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.1.0/dist/MarkerCluster.css" />
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <!-- Include Leaflet Heatmap Plugin -->
     <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
@@ -21,6 +21,7 @@
         <!-- <p id="vpd"></p>
         <p id="aridity_index"></p> -->
         <script>
+            console.log('hey');
             const map = L.map('map', {renderer: L.canvas()}).setView([55.870037, 85.441887], 3);
         
             const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -61,8 +62,8 @@
                     markers.addLayer(circle);
                 });
                 map.addLayer(markers);
-        
             }
+
             window.onload = updateMap;
         </script>
     </div>

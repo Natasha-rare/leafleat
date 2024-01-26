@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 import pandas as pd
 import time
 import threading
-
+from deep_translator import GoogleTranslator
 load_dotenv()
 app = Flask(__name__)
 
@@ -104,8 +104,9 @@ def process_weather_data_all():
             "vpd": calculate_vpd(temp_avg_c, humidity),
             "aridity_index": calculate_aridity_index(precip_total_mm)
         }
-
-        processed_data.append({"city_name": city["name"], "map_data": map_data})
+        # city_name =  GoogleTranslator(source='auto', target='ru').translate(city["name"])
+        # print(city_name)
+        processed_data.append({"city_name":city["name"], "map_data": map_data})
     return processed_data
 
 if __name__ == "__main__":
