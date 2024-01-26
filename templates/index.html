@@ -6,12 +6,16 @@
     <title>Weather Map</title>
     <!-- Include Leaflet CSS and JavaScript -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.1.0/dist/MarkerCluster.Default.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.1.0/dis/MarkerCluster.csst" />
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <!-- Include Leaflet Heatmap Plugin -->
     <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+    <script src="https://unpkg.com/geojson-vt@3.2.0/geojson-vt.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.1.0/dist/leaflet.markercluster.js"></script>
 </head>
 <body>
-    <div id="map" style="height: 800px;"></div>
+    <div id="map" style="height: 600px;"></div>
 
     <div>
         <p id="vpd"></p>
@@ -21,16 +25,35 @@
                 const response = await fetch('/weather_data');
                 const data = await response.json();
         
-                const map = L.map('map').setView([55.870037, 85.441887], 4);
+                const map = L.map('map', {renderer: L.canvas()}).setView([55.870037, 85.441887], 3);
         
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '© OpenStreetMap contributors'
+                const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors',
+                    // cacheMaxAge: 3600 * 24,
+                    // useCache: true, 
+                    // crossOrigin: true
                 }).addTo(map);
         
                 // Loop through all data points and add markers
+                
+                    // // Create a heatmap layer with custom color
+                    // const heatmapLayer = L.heatLayer([[cityData.map_data.lat, cityData.map_data.lon, 1]], {
+                    //     radius: 25,
+                    //     blur: 15,
+                    //     gradient: {1.0: color},
+                    //     maxZoom: 10,
+                    //     minOpacity: 0.5,
+                    // }).addTo(map);
+
+                    // L.marker([cityData.map_data.lat, cityData.map_data.lon]).addTo(map)
+                    //     .bindPopup(`City: ${cityData.city_name}<br>Temperature: ${cityData.map_data.temp}°C, Humidity: ${cityData.map_data.humidity}%`);
+                    // heatmapLayer.addLatLng([cityData.map_data.lat, cityData.map_data.lon, 1]);
+
+                var markers = L.markerClusterGroup();
+                
                 data.forEach(cityData => {
                     let color;
-                    const vpd = cityData.map_data.vdp;
+                    const vpd = cityData.map_data.vpd;
                     console.log(vpd, cityData.map_data)
                     if (vpd < 0.38 || vpd > 1.6) {
                         color = 'red';
@@ -43,31 +66,15 @@
                     } else {
                         color = 'gray';
                     }
-
-                    // Create a heatmap layer with custom color
-                    const heatmapLayer = L.heatLayer([[cityData.map_data.lat, cityData.map_data.lon, 1]], {
-                        radius: 25,
-                        blur: 15,
-                        gradient: {1.0: color},
-                        maxZoom: 10,
-                        minOpacity: 0.5,
+                    var circle = L.circle([cityData.map_data.lat, cityData.map_data.lon], {
+                        color: color,
+                        fillColor: color,
+                        fillOpacity: 0.8 
                     }).addTo(map);
-
-                    // L.marker([cityData.map_data.lat, cityData.map_data.lon]).addTo(map)
-                    //     .bindPopup(`City: ${cityData.city_name}<br>Temperature: ${cityData.map_data.temp}°C, Humidity: ${cityData.map_data.humidity}%`);
-                    const circle = L.circle([cityData.map_data.lat, cityData.map_data.lon], {
-                        color: 'black',
-                        fillColor: 'black',
-                        fillOpacity: 0.8,
-                        radius: 20000,  
-                    }).addTo(map);
-
-                    // Add a popup with information
                     circle.bindPopup(`City: ${cityData.city_name}<br>Temperature: ${cityData.map_data.temp}°C, Humidity: ${cityData.map_data.humidity}%`);
-                    heatmapLayer.addLatLng([cityData.map_data.lat, cityData.map_data.lon, 1]);
+                    markers.addLayer(circle);
                 });
-
-                
+                map.addLayer(markers);
         
                 // // Display VPD and aridity index for the first data point
                 // document.getElementById("vpd").innerText = `VPD: ${data[0].vpd} hPa`;
