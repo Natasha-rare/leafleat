@@ -7,7 +7,7 @@
     <!-- Include Leaflet CSS and JavaScript -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.1.0/dist/MarkerCluster.Default.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.1.0/dis/MarkerCluster.csst" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.1.0/dis/MarkerCluster.css" />
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <!-- Include Leaflet Heatmap Plugin -->
     <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
@@ -18,72 +18,53 @@
     <div id="map" style="height: 600px;"></div>
 
     <div>
-        <p id="vpd"></p>
-        <p id="aridity_index"></p>
+        <!-- <p id="vpd"></p>
+        <p id="aridity_index"></p> -->
         <script>
+            const map = L.map('map', {renderer: L.canvas()}).setView([55.870037, 85.441887], 3);
+        
+            const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                cacheMaxAge: 3600 * 24,
+                useCache: true, 
+                crossOrigin: true
+            }).addTo(map);
             async function updateMap() {
                 const response = await fetch('/weather_data');
                 const data = await response.json();
-        
-                const map = L.map('map', {renderer: L.canvas()}).setView([55.870037, 85.441887], 3);
-        
-                const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '© OpenStreetMap contributors',
-                    // cacheMaxAge: 3600 * 24,
-                    // useCache: true, 
-                    // crossOrigin: true
-                }).addTo(map);
-        
-                // Loop through all data points and add markers
-                
-                    // // Create a heatmap layer with custom color
-                    // const heatmapLayer = L.heatLayer([[cityData.map_data.lat, cityData.map_data.lon, 1]], {
-                    //     radius: 25,
-                    //     blur: 15,
-                    //     gradient: {1.0: color},
-                    //     maxZoom: 10,
-                    //     minOpacity: 0.5,
-                    // }).addTo(map);
-
-                    // L.marker([cityData.map_data.lat, cityData.map_data.lon]).addTo(map)
-                    //     .bindPopup(`City: ${cityData.city_name}<br>Temperature: ${cityData.map_data.temp}°C, Humidity: ${cityData.map_data.humidity}%`);
-                    // heatmapLayer.addLatLng([cityData.map_data.lat, cityData.map_data.lon, 1]);
-
                 var markers = L.markerClusterGroup();
                 
                 data.forEach(cityData => {
                     let color;
                     const vpd = cityData.map_data.vpd;
-                    console.log(vpd, cityData.map_data)
-                    if (vpd < 0.38 || vpd > 1.6) {
+                    // console.log(vpd, cityData.map_data)
+                    if (vpd < 0.4 || vpd > 1.6) {
                         color = 'red';
-                    } else if (vpd >= 0.4 && vpd <= 0.77) {
+                    } else if (vpd >= 0.4 && vpd <= 0.8) {
                         color = 'blue';
-                    } else if (vpd >= 0.78 && vpd <= 1.19) {
+                    } else if (vpd >= 0.8 && vpd <= 1.2) {
                         color = 'green';
-                    } else if (vpd >= 1.2 && vpd <= 1.59) {
+                    } else if (vpd >= 1.2 && vpd <= 1.6) {
                         color = 'orange';
                     } else {
+                        console.log('vpd', vpd);
                         color = 'gray';
                     }
-                    var circle = L.circle([cityData.map_data.lat, cityData.map_data.lon], {
+                    var radius = 10*cityData.map_data.aridity_index;
+                    var circle = L.circle([cityData.map_data.lat, cityData.map_data.lon],radius, {
                         color: color,
                         fillColor: color,
                         fillOpacity: 0.8 
                     }).addTo(map);
-                    circle.bindPopup(`City: ${cityData.city_name}<br>Temperature: ${cityData.map_data.temp}°C, Humidity: ${cityData.map_data.humidity}%`);
+                    circle.bindPopup(`City: ${cityData.city_name}<br>Temperature: ${cityData.map_data.temp}°C, Humidity: ${cityData.map_data.humidity}%<br>
+                    VPD: ${vpd}, Artidity Index: ${radius / 10}`);
                     markers.addLayer(circle);
                 });
                 map.addLayer(markers);
         
-                // // Display VPD and aridity index for the first data point
-                // document.getElementById("vpd").innerText = `VPD: ${data[0].vpd} hPa`;
-                // document.getElementById("aridity_index").innerText = `Aridity Index: ${data[0].aridity_index}`;
             }
-        
             window.onload = updateMap;
         </script>
-        
     </div>
 </body>
 </html>

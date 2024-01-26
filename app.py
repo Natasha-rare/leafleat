@@ -7,20 +7,19 @@ import os
 from dotenv import load_dotenv
 import pandas as pd
 import time
+import threading
 
 load_dotenv()
 app = Flask(__name__)
 
 client = MongoClient('localhost', 27017)
 db = client.flask_db
-print(db)
 
 APP_ID = os.getenv('APP_ID')
 APP_KEY = os.getenv('APP_KEY')
 
-# Load city data from CSV file
 cities_data = pd.read_csv("full_cities.csv")
-print(cities_data.shape)
+
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -28,56 +27,48 @@ def index():
 @app.route("/weather_data")
 def get_weather_data():
     # Check if data needs to be updated
-   
-    upd = should_update_data()
-    print(upd, 'should update')
-    # upd=True
-    if upd:
-        for index, city in cities_data.iterrows():
-            if index <= 671: continue
-            print(city, index)
-            try:
-                weather_data = fetch_weather_data(city["latitude"], city["longitude"])
-                update_mongo_data(city["name"], weather_data)
-            except requests.exceptions.ConnectTimeout as e:
-                print("Connection timed out. Retrying in 30 seconds...")
-                time.sleep(30)
-                continue
-            except:
-                time.sleep(60)
-                continue
-            
+    should_update = should_update_data()
+    print(should_update, 'should update')
+    # should_update = True
+    # Fetch weather data in a separate thread if update is needed
+    if should_update:
+        threading.Thread(target=fetch_and_update_weather_data).start()
+
+    # Retrieve and return processed data from MongoDB
+    processed_data = process_weather_data_all()
+    return jsonify(processed_data)
+
+def fetch_and_update_weather_data():
+    for index, city in cities_data.iterrows():
+        try:
+            weather_data = fetch_weather_data(city["latitude"], city["longitude"])
+            update_mongo_data(city["name"], weather_data)
+        except requests.exceptions.ConnectTimeout as e:
+            print("Connection timed out. Retrying in 30 seconds...")
+            time.sleep(30)
+            continue
+        except Exception as e:
+            print("Error occurred:", e)
+            time.sleep(90)
+            continue
 
     # Update last update date
     db.last_update.replace_one({}, {"date": datetime.today()}, upsert=True)
 
-    # Retrieve data from MongoDB for all cities
-    processed_data = process_weather_data_all()
-
-    return jsonify(processed_data)
-
 def fetch_weather_data(lat, lon):
-    # Fetch weather data from the API
     WEATHER_API_ENDPOINT = f"http://api.weatherunlocked.com/api/forecast/{lat},{lon}?app_id={APP_ID}&app_key={APP_KEY}"
-
     response = requests.get(WEATHER_API_ENDPOINT, timeout=3)
-    response.raise_for_status()  # Raise an exception if the request was not successful
-
+    response.raise_for_status()  
     return response.json()
 
 def should_update_data():
-    # Check if data was updated yesterday
-    # print(db.find())
     date_format = '%d/%m/%Y'
-
-    # Parse the string into a datetime object
-    last_update = db.weather.find_one()['weather_data']['Days'][0]['date']
-    last_update = datetime.strptime(last_update, date_format)
-
-    if last_update and (datetime.now().date() - last_update.date()).days <=1:
-        return False
+    last_update = db.weather.find_one({'weather_data.Days.0.date': {"$exists": True}})
+    if last_update:
+        last_update = datetime.strptime(last_update['weather_data']['Days'][0]['date'], date_format)
+        if (datetime.now().date() - last_update.date()).days <= 1:
+            return False
     return True
-
 
 def calculate_vpd(temperature_c, relative_humidity):
     e_sat = 6.112 * math.exp((17.67 * temperature_c) / (temperature_c + 243.5))
@@ -85,33 +76,24 @@ def calculate_vpd(temperature_c, relative_humidity):
     vpd = e_sat - e_act
     return vpd
 
-
 def calculate_aridity_index(precip_mm, temp_c=None):
     aridity_index = -10*precip_mm+1800
     return aridity_index
 
 def update_mongo_data(city_name, weather_data):
-    # Update or insert data into MongoDB for a specific city
     db.weather.replace_one({"city_name": city_name}, {"city_name": city_name, "weather_data": weather_data}, upsert=True)
 
 def process_weather_data_all():
-    # Process the raw weather data for all cities
     processed_data = []
-
     for index, city in cities_data.iterrows():
-        # print(city, city['name'], index, 'aaaa')
         city_data = db.weather.find_one({"city_name": city["name"]})
-        # print(city_data, 'cityyy_dataaa---------')
         if not city_data:
             continue
-        date, precip_total_mm, temp_avg_c, humidity = city_data['weather_data']['Days'][0]['date'], \
-                                                       city_data['weather_data']['Days'][0]['precip_total_mm'], \
-                                                       (city_data['weather_data']['Days'][0]['temp_max_c'] +
-                                                        city_data['weather_data']['Days'][0]['temp_min_c']) / 2, \
-                                                       (city_data['weather_data']['Days'][0]['humid_max_pct'] +
-                                                        city_data['weather_data']['Days'][0]['humid_min_pct']) / 2
+        date = city_data['weather_data']['Days'][0]['date']
+        precip_total_mm = city_data['weather_data']['Days'][0]['precip_total_mm']
+        temp_avg_c = (city_data['weather_data']['Days'][0]['temp_max_c'] + city_data['weather_data']['Days'][0]['temp_min_c']) / 2
+        humidity = (city_data['weather_data']['Days'][0]['humid_max_pct'] + city_data['weather_data']['Days'][0]['humid_min_pct']) / 2
 
-        # Extract relevant information for each city
         map_data = {
             "lat": city["latitude"],
             "lon": city["longitude"],
@@ -124,7 +106,6 @@ def process_weather_data_all():
         }
 
         processed_data.append({"city_name": city["name"], "map_data": map_data})
-    print('processed_data:', processed_data)
     return processed_data
 
 if __name__ == "__main__":

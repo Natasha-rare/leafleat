@@ -11,9 +11,9 @@ def find_evenly_distributed_cities(num_cities=200):
                     "admin4 code", "population", "elevation", "dem", "timezone", "modification date"]
     geonames = pd.read_csv(geonames_filepath, sep='\t', header=None, names=column_names)
     geonames = geonames.sort_values(by=['longitude', 'latitude'])
-    print(geonames)
-    geonames = geonames[(27 <= geonames['longitude']) & (geonames['longitude'] <= 40) & (36 <= geonames['latitude']) & (geonames['latitude'] <= 61)][::100]
-    russian_cities = geonames[(geonames["country_code"] == "RU") & (geonames["admin1_code"].notnull())]
+    # print(geonames)
+    # geonames = geonames[(27 <= geonames['longitude']) & (geonames['longitude'] <= 40) & (36 <= geonames['latitude']) & (geonames['latitude'] <= 61)][::100]
+    # russian_cities = geonames[(geonames["country_code"] == "RU") & (geonames["admin1_code"].notnull())]
 
     # # Normalize coordinates
     # russian_cities["normalized_longitude"] = (russian_cities["longitude"] - russian_cities["longitude"].mean()) / russian_cities["longitude"].std()
