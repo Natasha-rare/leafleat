@@ -18,23 +18,24 @@
     <div id="map" style="height: 600px;"></div>
 
     <div>
-        <!-- <p id="vpd"></p>
-        <p id="aridity_index"></p> -->
         <script>
-            console.log('hey');
-            const map = L.map('map', {renderer: L.canvas()}).setView([55.870037, 85.441887], 3);
-        
+            const map = L.map('map', { renderer: L.canvas() }).setView([55.870037, 85.441887], 3);
+
             const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap contributors',
                 cacheMaxAge: 3600 * 24,
-                useCache: true, 
+                useCache: true,
                 crossOrigin: true
             }).addTo(map);
+
+            var circles = L.layerGroup();
+            // var markers = L.markerClusterGroup();
+
             async function updateMap() {
                 const response = await fetch('/weather_data');
                 const data = await response.json();
-                var markers = L.markerClusterGroup();
-                
+                // markers.clearLayers();
+
                 data.forEach(cityData => {
                     let color;
                     const vpd = cityData.map_data.vpd;
@@ -51,20 +52,63 @@
                         console.log('vpd', vpd);
                         color = 'gray';
                     }
-                    var radius = 10*cityData.map_data.aridity_index;
-                    var circle = L.circle([cityData.map_data.lat, cityData.map_data.lon],radius, {
+                    var ai = cityData.map_data.aridity_index;
+                    var lat =  cityData.map_data.lat;
+                    var lon =  cityData.map_data.lon;
+                    var radius = 20*ai;
+                    var name = cityData.city_name;
+
+                    var circle = L.circle([lat, lon],radius, {
                         color: color,
                         fillColor: color,
                         fillOpacity: 0.8 
-                    }).addTo(map);
-                    circle.bindPopup(`City: ${cityData.city_name}<br>Temperature: ${cityData.map_data.temp}°C, Humidity: ${cityData.map_data.humidity}%<br>
-                    VPD: ${vpd}, Artidity Index: ${radius / 10}`);
-                    markers.addLayer(circle);
+                    })
+                    circle._airad = radius;
+                    // heatData.push([lat, lon, color]); // Add data for heat layer
+                   
+                    circle.bindPopup(`City: ${name}<br>Temperature: ${Math.round(cityData.map_data.temp)}°C, Humidity: ${Math.round(cityData.map_data.humidity)}%<br>
+                    VPD: ${Math.round(vpd)}, Artidity Index: ${Math.round(ai)}`);
+                    circles.addLayer(circle);
+                    // markers.addLayradius
+                    // map.addLayer(circle);
                 });
-                map.addLayer(markers);
+                
+                map.addLayer(circles);
             }
-
             window.onload = updateMap;
+            
+            var myZoom = {
+                start: map.getZoom(),
+                end: map.getZoom()
+                };
+
+            map.on('zoomstart', function(e) {
+            myZoom.start = map.getZoom();
+            });
+            const max_Radius = 10**5;
+            const min_Radius = 15000;
+
+            map.on('zoomend', function(e) {
+                myZoom.end = map.getZoom();
+                // console.log(myZoom.end);
+                var diff = myZoom.start - myZoom.end;
+                circles.eachLayer(function (layer) {
+                    // if (layer instanceof L.circle) {
+                    var cur_radius = layer.getRadius();
+                    // console.log(cur_radius,  layer._radius);
+                    if (diff > 0) {
+                        layer.setRadius(Math.min(cur_radius * 2, layer._airad * 10));
+                    } else if (diff < 0) {
+                        layer.setRadius(Math.max(cur_radius / 4, layer._airad / 10));
+                    }
+                    
+                    // if (myZoom.end == 4){
+                    //     layer.setRadius(layer._airad);
+                    //     console.log('here')
+                    // // }
+                    // }
+                    
+            });})
         </script>
     </div>
 </body>

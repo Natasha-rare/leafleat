@@ -1,8 +1,10 @@
+from datetime import datetime
 import pandas as pd
 from sklearn.cluster import KMeans
 import geopandas as gpd
 from shapely.geometry import Point
 import plotly.express as px
+from pymongo import MongoClient
 
 # csv_files = [ "full_cities.csv", "cities2.csv"]
 
@@ -28,33 +30,88 @@ import plotly.express as px
 # data.drop_duplicates(inplace=True)
 # print(data.shape, 'shape after drop')
 # data.to_csv("full_cities.csv", index=False)
-import pandas as pd
+# client = MongoClient('localhost', 27017)
+# db = client.flask_db
+# def get_city_data_by_day( day):
+#     city_data = {}
+#     cursor = db.weather.find({"Days.date": day})
+#     print(cursor)
+#     for document in cursor:
+#         city = document['city']
+#         city_data[city] = document
+#     return city_data
 
-import pandas as pd
+# date_format = '%d/%m/%Y'
+# # day = datetime.strptime('26/01/2024', date_format)
+# cursor = db.weather.find({})
+# for document in cursor:
+#     print(document)
+#     break
+# # print(get_city_data_by_day('26/01/2024'))
 
-# Load geonames data
-geonames_filepath = "RU.txt"  # Replace with the actual path
-column_names = ["geonameid", "name", "asciiname", "alternatenames", "latitude", "longitude", "feature class", "feature code", "country_code","cc2", "admin1_code", "admin2_code", "admin3_code", 
-                    "admin4 code", "population", "elevation", "dem", "timezone", "modification date"]
-geonames = pd.read_csv(geonames_filepath, sep='\t', header=None, names=column_names)
-geonames = geonames.sort_values(by=['longitude', 'latitude'])
+from pymongo import MongoClient
 
-# Extract required columns
-geonames = geonames[['name', 'alternatenames']]
+# MongoDB connection parameters
+db_uri = "mongodb://localhost:27017/"
 
-# Load full_cities data
-full_cities = pd.read_csv('full_cities.csv')
+# Connect to MongoDB
+client = MongoClient(db_uri)
+db = client.flask_db
+collection = db.weather
 
-# Function to get alternate names
-def get_alternate_names(city_name):
-    try:
-        alt_names = geonames.loc[geonames['name'] == city_name, 'alternatenames'].values
-        # print(alt_names, city_name)
-        return alt_names[0].split(',')[-1] if len(alt_names) > 0 else []
-    except:
-        return ''
+# Update documents in the collection
+cursor = collection.find({})
 
-# Apply the function to create the 'ru_translate' column
-full_cities['ru_translate'] = full_cities['name'].apply(get_alternate_names)
+for document in cursor:
+    print(document['city_name'], document['weather_data'])
+    city_name = document['city_name']
+    days = document['weather_data']['Days']
+    new_weather_data = {}
+    for day in days:
+        date = day['date']
+        new_weather_data[date] = {
+            'sunrise_time': day['sunrise_time'],
+            'sunset_time': day['sunset_time'],
+            'moonrise_time': day['moonrise_time'],
+            'moonset_time': day['moonset_time'],
+            'temp_max_c': day['temp_max_c'],
+            'temp_max_f': day['temp_max_f'],
+            'temp_min_c': day['temp_min_c'],
+            'temp_min_f': day['temp_min_f'],
+            'precip_total_mm': day['precip_total_mm'],
+            'precip_total_in': day['precip_total_in'],
+            'rain_total_mm': day['rain_total_mm'],
+            'rain_total_in': day['rain_total_in'],
+            'snow_total_mm': day['snow_total_mm'],
+            'snow_total_in': day['snow_total_in'],
+            'prob_precip_pct': day['prob_precip_pct'],
+            'humid_max_pct': day['humid_max_pct'],
+            'humid_min_pct': day['humid_min_pct'],
+            'windspd_max_mph': day['windspd_max_mph'],
+            'windspd_max_kmh': day['windspd_max_kmh'],
+            'windspd_max_kts': day['windspd_max_kts'],
+            'windspd_max_ms': day['windspd_max_ms'],
+            'windgst_max_mph': day['windgst_max_mph'],
+            'windgst_max_kmh': day['windgst_max_kmh'],
+            'windgst_max_kts': day['windgst_max_kts'],
+            'windgst_max_ms': day['windgst_max_ms'],
+            'slp_max_in': day['slp_max_in'],
+            'slp_max_mb': day['slp_max_mb'],
+            'slp_min_in': day['slp_min_in'],
+            'slp_min_mb': day['slp_min_mb'],
+        }
+    # Update document in the collection
+    collection.update_one(
+        {'_id': document['_id']},
+        {
+            '$set': {
+                'id': str(document['_id']),
+                'city_name': city_name,
+                'weather_data': new_weather_data
+            }
+        }
+    )
+    print('update sucessfull')
+    print(document, 'update sucessfull')
+    break
 
-print(full_cities)

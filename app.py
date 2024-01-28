@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 import pandas as pd
 import time
 import threading
-from deep_translator import GoogleTranslator
+
 load_dotenv()
 app = Flask(__name__)
 
@@ -29,7 +29,7 @@ def get_weather_data():
     # Check if data needs to be updated
     should_update = should_update_data()
     print(should_update, 'should update')
-    # should_update = True
+    should_update = False
     # Fetch weather data in a separate thread if update is needed
     if should_update:
         threading.Thread(target=fetch_and_update_weather_data).start()
@@ -43,6 +43,8 @@ def fetch_and_update_weather_data():
         try:
             weather_data = fetch_weather_data(city["latitude"], city["longitude"])
             update_mongo_data(city["name"], weather_data)
+            # if index % 100 == 0:
+            #     yield process_weather_data_all()
         except requests.exceptions.ConnectTimeout as e:
             print("Connection timed out. Retrying in 30 seconds...")
             time.sleep(30)
@@ -63,10 +65,12 @@ def fetch_weather_data(lat, lon):
 
 def should_update_data():
     date_format = '%d/%m/%Y'
-    last_update = db.weather.find_one({'weather_data.Days.0.date': {"$exists": True}})
+    last_update = db.last_update.find_one()
+    print(last_update)
     if last_update:
-        last_update = datetime.strptime(last_update['weather_data']['Days'][0]['date'], date_format)
-        if (datetime.now().date() - last_update.date()).days <= 1:
+        last_update_date = last_update.get('date')
+        print(last_update_date, datetime.now(), (datetime.now() - last_update_date).days)
+        if last_update_date and (datetime.now() - last_update_date).days < 1:
             return False
     return True
 
@@ -77,11 +81,13 @@ def calculate_vpd(temperature_c, relative_humidity):
     return vpd
 
 def calculate_aridity_index(precip_mm, temp_c=None):
-    aridity_index = -10*precip_mm+1800
+    aridity_index = -10*precip_mm + 1800
     return aridity_index
 
 def update_mongo_data(city_name, weather_data):
-    db.weather.replace_one({"city_name": city_name}, {"city_name": city_name, "weather_data": weather_data}, upsert=True)
+    # Append new weather data to the historical data array
+    db.weather.update_one({"city_name": city_name}, {"$push": {"weather_data": weather_data}}, upsert=True)
+
 
 def process_weather_data_all():
     processed_data = []
@@ -89,24 +95,31 @@ def process_weather_data_all():
         city_data = db.weather.find_one({"city_name": city["name"]})
         if not city_data:
             continue
-        date = city_data['weather_data']['Days'][0]['date']
-        precip_total_mm = city_data['weather_data']['Days'][0]['precip_total_mm']
-        temp_avg_c = (city_data['weather_data']['Days'][0]['temp_max_c'] + city_data['weather_data']['Days'][0]['temp_min_c']) / 2
-        humidity = (city_data['weather_data']['Days'][0]['humid_max_pct'] + city_data['weather_data']['Days'][0]['humid_min_pct']) / 2
+        weather_history = city_data.get("weather_data", [])
+        # print(weather_history)
+        if weather_history:
+            if type(weather_history) != list:
+                weather_history = [weather_history]
+            latest_weather = weather_history[-1]
+            try:
+                date = latest_weather['Days'][0]['date']
+            except:
+                continue
+            precip_total_mm = latest_weather['Days'][0]['precip_total_mm']
+            temp_avg_c = (latest_weather['Days'][0]['temp_max_c'] + latest_weather['Days'][0]['temp_min_c']) / 2
+            humidity = (latest_weather['Days'][0]['humid_max_pct'] + latest_weather['Days'][0]['humid_min_pct']) / 2
 
-        map_data = {
-            "lat": city["latitude"],
-            "lon": city["longitude"],
-            "precip_total_mm": precip_total_mm,
-            "date": date,
-            "temp": temp_avg_c,
-            "humidity": humidity,
-            "vpd": calculate_vpd(temp_avg_c, humidity),
-            "aridity_index": calculate_aridity_index(precip_total_mm)
-        }
-        # city_name =  GoogleTranslator(source='auto', target='ru').translate(city["name"])
-        # print(city_name)
-        processed_data.append({"city_name":city["name"], "map_data": map_data})
+            map_data = {
+                "lat": city["latitude"],
+                "lon": city["longitude"],
+                "precip_total_mm": precip_total_mm,
+                "date": date,
+                "temp": temp_avg_c,
+                "humidity": humidity,
+                "vpd": calculate_vpd(temp_avg_c, humidity),
+                "aridity_index": calculate_aridity_index(precip_total_mm)
+            }
+            processed_data.append({"city_name": city["name"], "map_data": map_data})
     return processed_data
 
 if __name__ == "__main__":
