@@ -15,11 +15,41 @@
     <script src="https://unpkg.com/leaflet.markercluster@1.1.0/dist/leaflet.markercluster.js"></script>
 </head>
 <body>
-    <div id="map" style="height: 600px;"></div>
+    <style>
+        [type="date"] {
+            background:#fff url(https://cdn1.iconfinder.com/data/icons/cc_mono_icon_set/blacks/16x16/calendar_2.png)  97% 50% no-repeat ;
+        }
+        [type="date"]::-webkit-inner-spin-button {
+        display: none;
+        }
+        [type="date"]::-webkit-calendar-picker-indicator {
+        opacity: 0;
+        }
+        /* custom styles */
+        body {
+        padding: 0 2em;
+        background: #e5e5e5;
+        font: 13px/1.4 'Lucida Sans', 'Lucida Grande', 'Lucida Sans Unicode', Verdana, sans-serif;
+        }
+        label {
+        display: block;
+        }
+        input {
+        border: 1px solid #c4c4c4;
+        border-radius: 5px;
+        background-color: #fff;
+        padding: 3px 5px;
+        box-shadow: inset 0 3px 6px rgba(0,0,0,0.1);
+        width: 190px;
+        }
+    </style>
+    <h1>Карта определения влияния дефицита давления пара (VPD) на индекс засушливости (AI) по территории России</h1>
     <div>
-        <label for="dateInput">Select Date:</label>
+        <label for="dateInput">Выберите дату:</label>
         <input type="date" id="dateInput" name="dateInput" value="">
     </div>
+    <div id="map" style="height: 540px;"></div>
+    
     <div>
         <script>
             const map = L.map('map', { renderer: L.canvas() }).setView([55.870037, 85.441887], 3);
@@ -86,11 +116,20 @@
                 updateMap(currentDate); // Load map with current date data
                 
                 dateInput.addEventListener('change', function() {
-                    const selectedDate = dateInput.value;
-                    circles.clearLayers(); // Clear existing circles before updating
-                    updateMap(selectedDate); // Update map with selected date data
-                });
-            }
+                var selectedDate = new Date(dateInput.value);
+                const today = new Date();
+                const threeDaysLater = new Date(today);
+                threeDaysLater.setDate(today.getDate() + 3);
+
+                if (selectedDate > threeDaysLater) {
+                    alert("Выберите дату не позже 3х дней от текущей и не раньше 26 января 2024");
+                    return;
+                }
+                selectedDate = selectedDate.toISOString().split('T')[0];
+                console.log(selectedDate);
+                circles.clearLayers(); // Clear existing circles before updating
+                updateMap(selectedDate); // Update map with selected date data
+            });}
             
             var myZoom = {
                 start: map.getZoom(),

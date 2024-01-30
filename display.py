@@ -20,35 +20,6 @@ from pymongo import MongoClient
 # print("Merged CSV file saved successfully!")
 
 
-# result = pd.read_csv('full_cities.csv')
-# fig = px.scatter_mapbox(result, lon=result['longitude'], lat=result['latitude'], zoom=3, width=1200, height=900)
-# fig.update_layout(mapbox_style='open-street-map')
-# fig.show()
-
-# data = pd.read_csv('full_cities.csv')
-# print(data.shape, 'shape before drop')
-# data.drop_duplicates(inplace=True)
-# print(data.shape, 'shape after drop')
-# data.to_csv("full_cities.csv", index=False)
-# client = MongoClient('localhost', 27017)
-# db = client.flask_db
-# def get_city_data_by_day( day):
-#     city_data = {}
-#     cursor = db.weather.find({"Days.date": day})
-#     print(cursor)
-#     for document in cursor:
-#         city = document['city']
-#         city_data[city] = document
-#     return city_data
-
-# date_format = '%d/%m/%Y'
-# # day = datetime.strptime('26/01/2024', date_format)
-# cursor = db.weather.find({})
-# for document in cursor:
-#     print(document)
-#     break
-# # print(get_city_data_by_day('26/01/2024'))
-
 from pymongo import MongoClient
 
 # MongoDB connection parameters

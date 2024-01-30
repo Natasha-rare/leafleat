@@ -32,12 +32,10 @@ def get_weather_data():
     # Check if data needs to be updated
     should_update = should_update_data()
     print(should_update, 'should update')
-    # should_update = True
-    # Fetch weather data in a separate thread if update is needed
+
     if should_update:
         threading.Thread(target=fetch_and_update_weather_data).start()
 
-    # Retrieve and return processed data from MongoDB
     processed_data = process_weather_data_all(date)
     return jsonify(processed_data)
 
@@ -100,10 +98,7 @@ def calculate_aridity_index(precip_mm, temp_c=None):
     aridity_index = -10*precip_mm + 1800
     return aridity_index
 
-# def update_mongo_data(city_name, weather_data):
-#     # Append new weather data to the historical data array
-#     db.weather.update_one({"city_name": city_name}, {"$push": {"weather_data": weather_data}}, upsert=True)
-# # from datetime import datetime
+
 def update_weather_data(weather_data):
     days = weather_data['Days']
     new_weather_data = {}
@@ -146,25 +141,7 @@ def update_mongo_data(city_name, weather_data):
     today_date = datetime.now().date()
     date_format = '%d/%m/%Y'
     weather_info = update_weather_data(weather_data)
-    # # for date, data in weather_info.items():
-    # #     print(datetime.strptime(date, date_format).date() >= today_date, date, today_date)
-    # # return
-    # # Append new weather data to the historical data array
-    # update_query = {
-    #     "$push": {
-    #         "weather_data": {
-    #             f"{date}": data for date, data in weather_info.items() if datetime.strptime(date, date_format).date() >= today_date
-    #         }
-    #     }
-    # }
-    # db.weather.update_one({"city_name": city_name}, update_query, upsert=True)
-    # filtered_weather_info = {
-    #     date: data for date, data in weather_info.items()
-    #     if datetime.strptime(date, date_format).date() >= today_date
-    # }
 
-    # Update the document only if there is data to update
-        # Update query to set or update the weather_data object for each date
     update_queries = [
         {
             "$set": {
