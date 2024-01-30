@@ -16,13 +16,16 @@
 </head>
 <body>
     <div id="map" style="height: 600px;"></div>
-
+    <div>
+        <label for="dateInput">Select Date:</label>
+        <input type="date" id="dateInput" name="dateInput" value="">
+    </div>
     <div>
         <script>
             const map = L.map('map', { renderer: L.canvas() }).setView([55.870037, 85.441887], 3);
 
             const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors',
+                // attribution: '© OpenStreetMap contributors',
                 cacheMaxAge: 3600 * 24,
                 useCache: true,
                 crossOrigin: true
@@ -31,8 +34,8 @@
             var circles = L.layerGroup();
             // var markers = L.markerClusterGroup();
 
-            async function updateMap() {
-                const response = await fetch('/weather_data');
+            async function updateMap(date) {
+                const response = await fetch(`/weather_data?date=${date}`);
                 const data = await response.json();
                 // markers.clearLayers();
 
@@ -67,7 +70,7 @@
                     // heatData.push([lat, lon, color]); // Add data for heat layer
                    
                     circle.bindPopup(`City: ${name}<br>Temperature: ${Math.round(cityData.map_data.temp)}°C, Humidity: ${Math.round(cityData.map_data.humidity)}%<br>
-                    VPD: ${Math.round(vpd)}, Artidity Index: ${Math.round(ai)}`);
+                    VPD: ${Number((vpd).toFixed(3))}, Artidity Index: ${Number((ai).toFixed(2))}`);
                     circles.addLayer(circle);
                     // markers.addLayradius
                     // map.addLayer(circle);
@@ -75,7 +78,19 @@
                 
                 map.addLayer(circles);
             }
-            window.onload = updateMap;
+            window.onload = function() {
+                const dateInput = document.getElementById('dateInput');
+                const currentDate = new Date().toISOString().split('T')[0]; // Get current date in YYYY-MM-DD format
+                dateInput.value = currentDate; // Set current date as default value
+                
+                updateMap(currentDate); // Load map with current date data
+                
+                dateInput.addEventListener('change', function() {
+                    const selectedDate = dateInput.value;
+                    circles.clearLayers(); // Clear existing circles before updating
+                    updateMap(selectedDate); // Update map with selected date data
+                });
+            }
             
             var myZoom = {
                 start: map.getZoom(),

@@ -61,8 +61,12 @@ collection = db.weather
 
 # Update documents in the collection
 cursor = collection.find({})
-
+i = 0
+print(cursor)
 for document in cursor:
+    i+=1
+    if i == 1:
+        continue
     print(document['city_name'], document['weather_data'])
     city_name = document['city_name']
     days = document['weather_data']['Days']
@@ -112,6 +116,5 @@ for document in cursor:
         }
     )
     print('update sucessfull')
-    print(document, 'update sucessfull')
-    break
+    print(document, 'update sucessfull', i)
 
